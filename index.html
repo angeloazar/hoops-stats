@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Hoops Stats" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <title>Hoops Stats</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f; --surface: #12121a; --card: #1a1a26; --border: #1e1e2e;
+      --orange: #FF6B2B; --gold: #F5C842; --teal: #2BCFCF; --green: #3DDC84;
+      --purple: #B57BEE; --red: #EE7B7B; --blue: #7BB3FF; --grey: #888899;
+      --text: #e8e8f0; --muted: #555;
+      --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow: hidden; }
+    #app { height: 100%; display: flex; flex-direction: column; }
+    .header { padding: calc(var(--safe-top) + 14px) 18px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--bg); flex-shrink: 0; }
+    .header-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.7rem; color: var(--orange); letter-spacing: 3px; line-height: 1; }
+    .header-sub { font-size: 9px; color: #333; letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
+    .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); transition: all 0.3s; }
+    .sync-dot.syncing { background: var(--orange); box-shadow: 0 0 6px var(--orange); animation: pulse 1s infinite; }
+    .sync-dot.error { background: var(--red); box-shadow: 0 0 6px var(--red); }
+    .scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 16px calc(var(--safe-bottom) + 80px); }
+    .player-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .player-tab { flex: 1; padding: 10px 0; border: 2px solid var(--border); border-radius: 30px; background: var(--surface); color: var(--muted); font-weight: 800; font-size: 13px; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; transition: all 0.2s; font-family: inherit; }
+    .player-tab.active { border-color: var(--orange); background: var(--orange); color: #fff; box-shadow: 0 4px 20px rgba(255,107,43,0.3); }
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 6px; text-align: center; position: relative; overflow: hidden; }
+    .stat-card-bar { position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 10px 10px 0 0; }
+    .stat-card-key { font-size: 8px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; margin-top: 6px; }
+    .stat-card-avg { font-size: 19px; font-weight: 900; color: var(--text); line-height: 1; }
+    .stat-card-best { font-size: 8px; color: var(--gold); margin-top: 3px; }
+    .form-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; }
+    .form-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 2px; color: var(--orange); margin-bottom: 14px; }
+    .form-field { margin-bottom: 12px; }
+    .form-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-weight: 700; margin-bottom: 4px; display: block; }
+    .form-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 14px; padding: 10px 12px; outline: none; transition: border-color 0.2s; -webkit-appearance: none; }
+    .form-input:focus { border-color: var(--orange); }
+    .stat-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+    .stat-input-num { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 24px; font-weight: 900; padding: 10px 8px; outline: none; text-align: center; -webkit-appearance: none; transition: border-color 0.2s; }
+    .stat-input-num:focus { border-color: var(--orange); }
+    .btn-save { width: 100%; background: var(--orange); color: #fff; border: none; border-radius: 12px; padding: 14px 0; font-family: inherit; font-size: 15px; font-weight: 800; letter-spacing: 2px; cursor: pointer; box-shadow: 0 4px 20px rgba(255,107,43,0.3); transition: all 0.2s; text-transform: uppercase; }
+    .btn-save:active { transform: scale(0.98); opacity: 0.9; }
+    .btn-save:disabled { background: #333; box-shadow: none; cursor: not-allowed; }
+    .history-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+    .history-top { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    .history-heading { font-weight: 800; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
+    .game-badge { background: rgba(255,107,43,0.1); color: var(--orange); border: 1px solid rgba(255,107,43,0.3); border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 700; }
+    .game-row { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .game-row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .game-date { font-weight: 700; font-size: 13px; }
+    .game-opp { color: var(--muted); font-size: 11px; margin-left: 8px; }
+    .game-pts { font-size: 26px; font-weight: 900; color: var(--orange); line-height: 1; }
+    .game-pts-lbl { font-size: 9px; color: var(--muted); margin-left: 2px; }
+    .game-stat-mini { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+    .mini-cell { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 4px; text-align: center; }
+    .mini-key { font-size: 7px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+    .mini-val { font-size: 15px; font-weight: 800; color: #ccc; }
+    .btn-del { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 3px 8px; font-size: 11px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+    .btn-del.confirm { background: var(--red); border-color: var(--red); color: #fff; font-weight: 700; }
+    .avg-row { background: rgba(255,107,43,0.05); border-top: 1px solid rgba(255,107,43,0.15); padding: 12px 16px; }
+    .avg-label { font-size: 9px; color: var(--orange); letter-spacing: 2px; font-weight: 700; margin-bottom: 6px; text-transform: uppercase; }
+    .avg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+    .avg-cell { text-align: center; }
+    .avg-key { font-size: 7px; color: var(--muted); letter-spacing: 1px; }
+    .avg-val { font-size: 15px; font-weight: 900; color: var(--orange); }
+    .trend-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .trend-chip { background: var(--surface); border: 1px solid var(--border); color: var(--muted); border-radius: 20px; padding: 5px 12px; font-size: 10px; font-weight: 700; letter-spacing: 1px; cursor: pointer; text-transform: uppercase; font-family: inherit; transition: all 0.15s; }
+    .trend-chart-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 14px; }
+    .trend-chart-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .trend-chart-title { font-weight: 800; font-size: 13px; letter-spacing: 1px; }
+    .trend-meta { font-size: 11px; color: var(--muted); }
+    .bar-chart { display: flex; align-items: flex-end; gap: 3px; height: 90px; }
+    .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+    .bar-val { font-size: 8px; color: var(--muted); margin-bottom: 2px; }
+    .bar { width: 100%; border-radius: 3px 3px 0 0; min-height: 3px; }
+    .bar-lbl { font-size: 7px; color: #333; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center; }
+    .trend-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .trend-summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; transition: border-color 0.15s; position: relative; overflow: hidden; }
+    .trend-summary-card-bar { position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+    .trend-summary-key { font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 6px; margin-bottom: 4px; }
+    .trend-summary-vals { display: flex; justify-content: space-between; align-items: baseline; }
+    .trend-summary-avg { font-size: 22px; font-weight: 900; }
+    .trend-summary-best { font-size: 10px; color: var(--gold); }
+    .empty { text-align: center; padding: 40px 20px; color: var(--muted); }
+    .empty-ball { font-size: 36px; margin-bottom: 10px; }
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: flex; padding: 8px 0 calc(var(--safe-bottom) + 8px); z-index: 50; }
+    .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; color: var(--muted); cursor: pointer; font-family: inherit; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 4px 0; transition: color 0.15s; }
+    .nav-btn.active { color: var(--orange); }
+    .nav-icon { font-size: 20px; line-height: 1; }
+    .toast { position: fixed; bottom: calc(var(--safe-bottom) + 72px); left: 50%; transform: translateX(-50%) translateY(20px); background: var(--green); color: #0a1a0f; padding: 10px 22px; border-radius: 30px; font-weight: 800; font-size: 13px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); z-index: 100; opacity: 0; transition: all 0.3s; white-space: nowrap; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div>
+      <div class="header-title">🏀 Hoops Stats</div>
+      <div class="header-sub">Cloud Synced · Any Device</div>
+    </div>
+    <div class="sync-dot" id="syncDot"></div>
+  </div>
+  <div class="scroll-area" id="scrollArea">
+    <div class="player-tabs">
+      <button class="player-tab active" onclick="switchPlayer('Levi')" id="tab-Levi">Levi</button>
+      <button class="player-tab" onclick="switchPlayer('Jeremiah')" id="tab-Jeremiah">Jeremiah</button>
+    </div>
+    <div class="stat-grid" id="statGrid"></div>
+    <div id="viewContent"></div>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-btn active" id="nav-log" onclick="switchView('log')"><span class="nav-icon">➕</span>Log Game</button>
+    <button class="nav-btn" id="nav-history" onclick="switchView('history')"><span class="nav-icon">📋</span>History</button>
+    <button class="nav-btn" id="nav-trends" onclick="switchView('trends')"><span class="nav-icon">📈</span>Trends</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+// ── REPLACE THESE WITH YOUR SUPABASE DETAILS ─────────────────────────────
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+// ─────────────────────────────────────────────────────────────────────────
+
+const STATS = [
+  { key:'pts',    label:'Points',      short:'PTS', color:'#FF6B2B', emoji:'🔥' },
+  { key:'threes', label:'3-Pointers',  short:'3PT', color:'#F5C842', emoji:'🎯' },
+  { key:'ft',     label:'Free Throws', short:'FT',  color:'#7BB3FF', emoji:'🏹' },
+  { key:'reb',    label:'Rebounds',    short:'REB', color:'#2BCFCF', emoji:'💪' },
+  { key:'ast',    label:'Assists',     short:'AST', color:'#3DDC84', emoji:'🤝' },
+  { key:'stl',    label:'Steals',      short:'STL', color:'#B57BEE', emoji:'⚡' },
+  { key:'blk',    label:'Blocks',      short:'BLK', color:'#EE7B7B', emoji:'🛡️' },
+  { key:'tov',    label:'Turnovers',   short:'TOV', color:'#888899', emoji:'😬' },
+];
+const STAT_MAP = Object.fromEntries(STATS.map(s => [s.key, s]));
+
+let player = 'Levi';
+let view = 'log';
+let allGames = { Levi: [], Jeremiah: [] };
+let trendStat = 'pts';
+let deleteConfirm = null;
+let form = emptyForm();
+let saving = false;
+
+function emptyForm() {
+  const f = { date: today(), opp: '' };
+  STATS.forEach(s => f[s.key] = '');
+  return f;
+}
+function today() { return new Date().toISOString().split('T')[0]; }
+
+async function dbFetch(p) {
+  setSyncing(true);
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/games?player=eq.${p}&order=game_date.desc`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const data = await res.json();
+    allGames[p] = Array.isArray(data) ? data.map(r => ({
+      id: r.id, date: r.game_date, opp: r.opponent || '—',
+      pts: r.pts||0, threes: r.threes||0, ft: r.ft||0, reb: r.reb||0,
+      ast: r.ast||0, stl: r.stl||0, blk: r.blk||0, tov: r.tov||0,
+    })) : [];
+    setSyncing(false);
+    render();
+  } catch(e) { setSyncing(false, true); console.error(e); }
+}
+
+async function dbInsert(game) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/games`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json', 'Prefer': 'return=representation'
+    },
+    body: JSON.stringify({
+      player: player, game_date: game.date, opponent: game.opp,
+      pts: game.pts, threes: game.threes, ft: game.ft, reb: game.reb,
+      ast: game.ast, stl: game.stl, blk: game.blk, tov: game.tov,
+    })
+  });
+  const data = await res.json();
+  return Array.isArray(data) ? data[0] : null;
+}
+
+async function dbDelete(id) {
+  await fetch(`${SUPABASE_URL}/rest/v1/games?id=eq.${id}`, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  });
+}
+
+function setSyncing(on, error) {
+  const dot = document.getElementById('syncDot');
+  if (dot) dot.className = 'sync-dot' + (error ? ' error' : on ? ' syncing' : '');
+}
+
+function computeStats(games) {
+  if (!games.length) return null;
+  const result = {};
+  STATS.forEach(s => {
+    const vals = games.map(g => g[s.key] || 0);
+    result[s.key] = { avg: (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1), best: Math.max(...vals) };
+  });
+  return result;
+}
+
+function switchPlayer(p) {
+  player = p;
+  ['Levi','Jeremiah'].forEach(n => document.getElementById('tab-'+n).classList.toggle('active', n===p));
+  dbFetch(p);
+}
+
+function switchView(v) {
+  view = v;
+  ['log','history','trends'].forEach(n => document.getElementById('nav-'+n).classList.toggle('active', n===v));
+  render();
+  document.getElementById('scrollArea').scrollTo(0, 0);
+}
+
+async function saveGame() {
+  if (saving) return;
+  saving = true;
+  setSyncing(true);
+  const game = { date: form.date || today(), opp: form.opp || '—' };
+  STATS.forEach(s => game[s.key] = parseInt(form[s.key]) || 0);
+  try {
+    const saved = await dbInsert(game);
+    if (saved) {
+      allGames[player].unshift({ ...game, id: saved.id });
+      form = emptyForm();
+      showToast('Game saved! 🏀');
+    }
+  } catch(e) { setSyncing(false, true); }
+  setSyncing(false);
+  saving = false;
+  render();
+}
+
+async function deleteGame(id) {
+  if (deleteConfirm !== id) { deleteConfirm = id; render(); return; }
+  setSyncing(true);
+  try {
+    await dbDelete(id);
+    allGames[player] = allGames[player].filter(g => g.id !== id);
+    showToast('Game deleted');
+  } catch(e) { setSyncing(false, true); }
+  deleteConfirm = null;
+  setSyncing(false);
+  render();
+}
+
+function cancelDelete() { deleteConfirm = null; render(); }
+function updateForm(key, val) { form[key] = val; }
+function setTrendStat(k) { trendStat = k; render(); }
+
+function render() {
+  renderStatCards();
+  const el = document.getElementById('viewContent');
+  if (!el) return;
+  if (view === 'log') el.innerHTML = renderLog();
+  else if (view === 'history') el.innerHTML = renderHistory();
+  else el.innerHTML = renderTrends();
+}
+
+function renderStatCards() {
+  const el = document.getElementById('statGrid');
+  if (!el) return;
+  const games = allGames[player] || [];
+  const stats = computeStats(games);
+  el.innerHTML = STATS.map(s => `
+    <div class="stat-card">
+      <div class="stat-card-bar" style="background:${s.color}"></div>
+      <div class="stat-card-key">${s.short}</div>
+      <div class="stat-card-avg">${stats ? stats[s.key].avg : '—'}</div>
+      ${stats ? `<div class="stat-card-best">🏆 ${stats[s.key].best}</div>` : ''}
+    </div>`).join('');
+}
+
+function renderLog() {
+  return `<div class="form-panel">
+    <div class="form-title">+ Log Game — ${player}</div>
+    <div class="form-field">
+      <label class="form-label">Date</label>
+      <input class="form-input" type="date" value="${form.date}" onchange="updateForm('date',this.value)" />
+    </div>
+    <div class="form-field">
+      <label class="form-label">Opponent / Notes</label>
+      <input class="form-input" type="text" placeholder="e.g. Rep Trial, Hornets" value="${form.opp}" oninput="updateForm('opp',this.value)" />
+    </div>
+    <div class="stat-inputs">
+      ${STATS.map(s => `
+        <div>
+          <label class="form-label">${s.emoji} ${s.label}</label>
+          <input class="stat-input-num" type="number" inputmode="numeric" min="0" placeholder="0"
+            value="${form[s.key]}" oninput="updateForm('${s.key}',this.value)" />
+        </div>`).join('')}
+    </div>
+    <button class="btn-save" onclick="saveGame()" ${saving?'disabled':''}>
+      ${saving ? 'Saving…' : 'Save Game ✓'}
+    </button>
+  </div>`;
+}
+
+function renderHistory() {
+  const games = allGames[player] || [];
+  const stats = computeStats(games);
+  const records = stats ? Object.fromEntries(STATS.map(s => [s.key, stats[s.key].best])) : {};
+  if (!games.length) return `<div class="history-panel"><div class="empty"><div class="empty-ball">🏀</div><div>No games yet — log the first one!</div></div></div>`;
+  return `<div class="history-panel">
+    <div class="history-top">
+      <span class="history-heading">${player}'s Games</span>
+      <span class="game-badge">${games.length} game${games.length!==1?'s':''}</span>
+    </div>
+    ${games.map(g => {
+      const d = g.date ? new Date(g.date+'T00:00').toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'2-digit'}) : '—';
+      const isConfirm = deleteConfirm === g.id;
+      return `<div class="game-row">
+        <div class="game-row-top">
+          <div><span class="game-date">${d}</span><span class="game-opp">${g.opp}</span></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="game-pts">${g.pts}</span><span class="game-pts-lbl">pts</span>
+            ${isConfirm
+              ? `<button class="btn-del confirm" onclick="deleteGame(${g.id})">Delete?</button>
+                 <button class="btn-del" onclick="cancelDelete()">Cancel</button>`
+              : `<button class="btn-del" onclick="deleteGame(${g.id})">✕</button>`}
+          </div>
+        </div>
+        <div class="game-stat-mini">
+          ${STATS.filter(s=>s.key!=='pts').map(s => {
+            const isRec = records[s.key]!==undefined && g[s.key]===records[s.key] && games.length>1 && g[s.key]>0;
+            return `<div class="mini-cell" style="${isRec?`border-color:${s.color}44;background:${s.color}11`:''}">
+              <div class="mini-key">${s.short}</div>
+              <div class="mini-val" style="${isRec?`color:${s.color}`:''}">
+                ${g[s.key]||0}${isRec?'<span style="font-size:7px">★</span>':''}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }).join('')}
+    ${stats ? `<div class="avg-row">
+      <div class="avg-label">Season Averages</div>
+      <div class="avg-grid">
+        ${STATS.map(s=>`<div class="avg-cell"><div class="avg-key">${s.short}</div><div class="avg-val">${stats[s.key].avg}</div></div>`).join('')}
+      </div>
+    </div>` : ''}
+  </div>`;
+}
+
+function renderTrends() {
+  const games = allGames[player] || [];
+  const stats = computeStats(games);
+  const ordered = [...games].reverse();
+  const active = STAT_MAP[trendStat];
+  const chips = STATS.map(s => {
+    const isA = s.key === trendStat;
+    return `<button class="trend-chip" onclick="setTrendStat('${s.key}')"
+      style="${isA?`border-color:${s.color};color:${s.color};background:${s.color}18`:''}">${s.short}</button>`;
+  }).join('');
+  let chartHtml = '';
+  if (ordered.length >= 2) {
+    const vals = ordered.map(g => g[trendStat]||0);
+    const max = Math.max(...vals, 1);
+    chartHtml = `<div class="bar-chart">${ordered.map((g,i) => {
+      const h = Math.max(3, Math.round((vals[i]/max)*80));
+      const d = g.date ? new Date(g.date+'T00:00').toLocaleDateString('en-AU',{day:'numeric',month:'short'}) : 'G'+(i+1);
+      return `<div class="bar-wrap">
+        <div class="bar-val">${vals[i]}</div>
+        <div class="bar" style="height:${h}px;background:${active.color}88;border:1px solid ${active.color}"></div>
+        <div class="bar-lbl">${d}</div>
+      </div>`;
+    }).join('')}</div>`;
+  } else {
+    chartHtml = `<div style="height:90px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">Log 2+ games to see trend</div>`;
+  }
+  return `<div class="trend-chips">${chips}</div>
+    <div class="trend-chart-panel">
+      <div class="trend-chart-top">
+        <div class="trend-chart-title" style="color:${active.color}">${active.emoji} ${active.label}</div>
+        ${stats?`<div class="trend-meta">Avg <b style="color:${active.color}">${stats[trendStat].avg}</b> &nbsp; Best <b style="color:var(--gold)">${stats[trendStat].best}</b></div>`:''}
+      </div>
+      ${chartHtml}
+    </div>
+    <div class="trend-summary-grid">
+      ${STATS.map(s => {
+        const isA = s.key === trendStat;
+        return `<div class="trend-summary-card" onclick="setTrendStat('${s.key}')" style="${isA?`border-color:${s.color}55`:''}">
+          <div class="trend-summary-card-bar" style="background:${s.color}"></div>
+          <div class="trend-summary-key">${s.label}</div>
+          <div class="trend-summary-vals">
+            <span class="trend-summary-avg" style="color:${isA?s.color:'var(--text)'}">${stats?stats[s.key].avg:'—'}</span>
+            ${stats?`<span class="trend-summary-best">🏆 ${stats[s.key].best}</span>`:''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+render();
+dbFetch('Levi');
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(console.error);
+</script>
+</body>
+</html>
